@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Concierge Console (Simulator)</title>
+  <style>
+    :root { --panel:#1b2233; --panel-2:#232c42; --bg:#0f1420; --text:#e8ecf4; --muted:#9aa5bd; --accent:#4d8dff; --border:#303b56; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--text); padding:24px; }
+    h1 { font-size:1.2rem; }
+    .wrap { max-width:900px; margin:0 auto; display:grid; gap:16px; }
+    .panel { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:20px; }
+    label { display:block; margin:10px 0; font-size:.9rem; }
+    input[type=text], textarea, select { display:block; width:100%; margin-top:4px; padding:9px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text); font:inherit; }
+    textarea { min-height:60px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    .row > div { flex:1 1 200px; }
+    button { font:inherit; background:var(--accent); border:none; color:#fff; padding:10px 18px; border-radius:8px; cursor:pointer; }
+    button.sec { background:transparent; border:1px solid var(--border); color:var(--text); }
+    .muted { color:var(--muted); font-size:.85rem; }
+    ul { list-style:none; padding:0; margin:0; }
+    li { padding:8px 4px; border-bottom:1px solid var(--border); font-size:.9rem; display:flex; gap:10px; }
+    .stamp { color:var(--muted); white-space:nowrap; }
+    .ok { color:#2fbf71; font-weight:600; }
+    .no { color:#e05260; font-weight:600; }
+    #photoPreview { margin-top:6px; width:90px; height:90px; object-fit:cover; border-radius:8px; border:1px solid var(--border); }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    @media (max-width:700px){ .grid2 { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🏛️ Concierge Console <span class="muted">(simulator)</span></h1>
+
+    <div class="panel">
+      <h3>Announce a visitor</h3>
+      <p class="muted">The resident instantly receives the photo and a live audio feed, and can approve or deny entry.</p>
+      <div class="row">
+        <div>
+          <label>Visitor name
+            <input type="text" id="vName" placeholder="e.g. Delivery courier / Sarah" />
+          </label>
+          <label>Message to resident
+            <textarea id="vMsg" placeholder="Optional note shown with the photo"></textarea>
+          </label>
+          <label>Visitor photo (optional)
+            <input type="file" id="vPhoto" accept="image/*" />
+          </label>
+          <img id="photoPreview" class="hidden" alt="chosen photo preview" style="display:none" />
+        </div>
+        <div>
+          <button id="btnVisitor" style="width:100%">🔔 Send visitor to resident</button>
+          <p class="muted" style="margin-top:8px">Quick send with a generated photo, or choose a JPEG/PNG to act as the concierge's camera still.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Log a package drop-off</h3>
+      <div class="row">
+        <div>
+          <label>Courier
+            <select id="pCourier">
+              <option>DHL</option><option>Amazon</option><option>Royal Mail</option><option>DPD</option><option>FedEx</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>Note
+            <input type="text" id="pNote" placeholder="e.g. left with concierge desk" />
+          </label>
+        </div>
+        <div>
+          <button id="btnPackage">📦 Notify resident</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h3>Registered resident</h3>
+        <div id="residentInfo" class="muted">No resident registered yet.</div>
+      </div>
+      <div class="panel">
+        <h3>Resident decisions</h3>
+        <ul id="decisionList" class="muted"><li>None yet.</li></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    let photoDataUrl = null;
+
+    $("vPhoto").addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        photoDataUrl = reader.result;
+        const img = $("photoPreview");
+        img.src = photoDataUrl;
+        img.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+    });
+
+    $("btnVisitor").addEventListener("click", async () => {
+      const name = $("vName").value.trim() || "Visitor at the door";
+      const res = await fetch("/api/concierge/visitor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, message: $("vMsg").value.trim() || undefined, photo: photoDataUrl || undefined }),
+      });
+      if (res.status === 409) alert("A visitor is already waiting for a decision.");
+    });
+
+    $("btnPackage").addEventListener("click", async () => {
+      await fetch("/api/concierge/package", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ courier: $("pCourier").value, note: $("pNote").value.trim() || undefined }),
+      });
+      $("pNote").value = "";
+    });
+
+    const es = new EventSource("/api/events");
+    es.addEventListener("resident", (e) => {
+      const r = JSON.parse(e.data);
+      $("residentInfo").innerHTML = r.anonymous
+        ? `<strong>Anonymous resident</strong> — ID ${r.residentId || "(generated)"}`
+        : `<strong>${r.name}</strong> · Flat ${r.flat}` +
+          (r.email ? `<br/>✉️ ${r.email}` : "") +
+          (r.phone ? `<br/>📞 ${r.phone}` : "") +
+          (r.whatsapp ? `<br/>💬 WhatsApp enabled` : "");
+    });
+    es.addEventListener("visitor", (e) => {
+      const v = JSON.parse(e.data);
+      if (v.status !== "pending" && v.status) {
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="stamp">${new Date(v.decidedAt).toLocaleTimeString()}</span>
+          <span>${v.name}: <span class="${v.status === "approved" ? "ok" : "no"}">${v.status.toUpperCase()}</span></span>`;
+        const list = $("decisionList");
+        if (list.querySelector(".muted")) list.innerHTML = "";
+        list.prepend(li);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Building Concierge — Resident App</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>🏙️ Building Concierge</h1>
+    <div id="residentBadge" class="badge hidden"></div>
+  </header>
+
+  <main>
+    <!-- ============ SETUP ============ -->
+    <section id="setupSection" class="panel">
+      <h2>Resident Setup</h2>
+
+      <!-- Step 1: anonymity choice -->
+      <div id="stepAnonymity" class="step">
+        <p>Would you like to remain <strong>anonymous</strong> to the concierge, or supply personal details?</p>
+        <div class="choices">
+          <button class="choice" data-anon="true">
+            <span class="choice-icon">🕶️</span>
+            <span>Remain anonymous</span>
+            <small>The concierge will know me only by a generated ID</small>
+          </button>
+          <button class="choice" data-anon="false">
+            <span class="choice-icon">🙋</span>
+            <span>Supply personal details</span>
+            <small>Name and flat number, plus optional contact details</small>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: details form -->
+      <form id="stepDetails" class="step hidden" novalidate>
+        <p class="hint">Fields marked <span class="req">*</span> are required.</p>
+
+        <label>Full name <span class="req">*</span>
+          <input type="text" id="inpName" autocomplete="name" required />
+        </label>
+        <label>Flat number <span class="req">*</span>
+          <input type="text" id="inpFlat" autocomplete="off" required />
+        </label>
+
+        <fieldset class="optional">
+          <legend>Optional contact details <small>(supply any or none)</small></legend>
+          <label>Email address
+            <input type="email" id="inpEmail" autocomplete="email" />
+          </label>
+          <label>Phone number
+            <input type="tel" id="inpPhone" autocomplete="tel" />
+          </label>
+          <label>
+            <input type="checkbox" id="inpWhatsapp" />
+            WhatsApp available on my phone number
+          </label>
+        </fieldset>
+
+        <div class="step-actions">
+          <button type="button" id="btnBackAnon" class="secondary">← Back</button>
+          <button type="submit" id="btnSubmitDetails" class="primary">Complete setup</button>
+        </div>
+        <p id="setupError" class="error hidden"></p>
+      </form>
+
+      <!-- Step 3: done -->
+      <div id="stepDone" class="step hidden">
+        <p id="setupDoneMsg"></p>
+        <button id="btnGoDashboard" class="primary">Go to my dashboard →</button>
+      </div>
+    </section>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section id="dashboardSection" class="panel hidden">
+      <nav class="tabs">
+        <button class="tab active" data-tab="visitors">Visitors</button>
+        <button class="tab" data-tab="packages">Packages</button>
+      </nav>
+
+      <!-- Visitors tab -->
+      <div id="tab-visitors" class="tab-body">
+        <div class="visitor-alert hidden" id="visitorAlert">
+          <div class="alert-header">
+            <span class="pulse"></span>
+            <h3 id="visitorName">Visitor at the door</h3>
+          </div>
+          <div class="alert-body">
+            <img id="visitorPhoto" class="visitor-photo" alt="Photo of the visitor sent by the concierge" src="" />
+            <div class="alert-right">
+              <p id="visitorMsg" class="visitor-msg"></p>
+              <div class="audio-box">
+                <h4>🔊 Live audio from concierge</h4>
+                <audio id="liveAudio" autoplay controls></audio>
+                <span id="audioStatus" class="audio-status">connecting…</span>
+              </div>
+              <div class="alert-actions">
+                <button id="btnApprove" class="primary">✓ Let them up</button>
+                <button id="btnDeny" class="danger">✗ Deny entry</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="noVisitor" class="empty">No visitors at the door right now.</div>
+        <h3>Visitor log</h3>
+        <ul id="visitorLog" class="log"></ul>
+      </div>
+
+      <!-- Packages tab -->
+      <div id="tab-packages" class="tab-body hidden">
+        <h3>Package drop-offs</h3>
+        <ul id="packageLog" class="log"></ul>
+        <div id="noPackages" class="empty">No packages have been dropped off yet.</div>
+      </div>
+    </section>
+  </main>
+
+  <template id="tplLogItem">
+    <li class="log-item">
+      <span class="log-time"></span>
+      <span class="log-body"></span>
+    </li>
+  </template>
+
+  <script type="module" src="js/config.js"></script>
+  <script type="module" src="js/api.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
